@@ -1,0 +1,6 @@
+{
+  "name": "Pearl Port",
+  "description": "Manage portfolios at Colombo Stock Exchange with real-time price updates, buy/sell alerts, fixed deposits tracking, and tax reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
