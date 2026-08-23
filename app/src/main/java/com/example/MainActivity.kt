@@ -11,12 +11,14 @@ import androidx.activity.SystemBarStyle
 import android.graphics.Color
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.DropdownMenu
@@ -51,7 +53,7 @@ import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.PortfolioViewModel
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    object Dashboard : Screen("dashboard", "Dashboard", Icons.Filled.Dashboard)
+    object Dashboard : Screen("dashboard", "Home", Icons.Filled.Home)
     object Portfolio : Screen("portfolio", "Portfolio", Icons.Filled.ShowChart)
     object Reports : Screen("reports", "Reports", Icons.Filled.Description)
     
@@ -85,9 +87,17 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
 
         setContent {
-            MyApplicationTheme(darkTheme = false) {
+            val viewModel: PortfolioViewModel = viewModel()
+            val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
+            val darkTheme = when (themePreference) {
+                "Light" -> false
+                "Dark" -> true
+                else -> false // Original defaults to false or you can change
+            }
+            val dynamicColor = themePreference != "Original"
+
+            MyApplicationTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
                 val navController = rememberNavController()
-                val viewModel: PortfolioViewModel = viewModel()
                 var showMenu by remember { mutableStateOf(false) }
 
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -153,7 +163,7 @@ class MainActivity : ComponentActivity() {
                                                 saveState = true
                                             }
                                             launchSingleTop = true
-                                            restoreState = true
+                                            restoreState = (screen.route != Screen.Dashboard.route)
                                         }
                                     }
                                 )

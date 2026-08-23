@@ -13,6 +13,7 @@ import com.example.data.StockAlert
 import com.example.data.StockPosition
 import com.example.data.UnitTrust
 import com.example.network.NetworkProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,12 +39,56 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
     private val _chartColorPalette = MutableStateFlow(prefs.getString("chart_palette", "Default") ?: "Default")
     val chartColorPalette: StateFlow<String> = _chartColorPalette
 
+    private val _themePreference = MutableStateFlow(prefs.getString("app_theme", "Original") ?: "Original")
+    val themePreference: StateFlow<String> = _themePreference
+
+    private val _userName = MutableStateFlow(prefs.getString("user_name", "Guest") ?: "Guest")
+    val userName: StateFlow<String> = _userName
+
     private val _aspiData = MutableStateFlow<com.example.network.AspiDataResponse?>(null)
     val aspiData: StateFlow<com.example.network.AspiDataResponse?> = _aspiData
 
     fun setChartColorPalette(paletteName: String) {
         prefs.edit().putString("chart_palette", paletteName).apply()
         _chartColorPalette.value = paletteName
+    }
+
+    fun setThemePreference(themeName: String) {
+        prefs.edit().putString("app_theme", themeName).apply()
+        _themePreference.value = themeName
+    }
+
+    fun setUserName(name: String) {
+        prefs.edit().putString("user_name", name).apply()
+        _userName.value = name
+    }
+
+    fun exportBackup(): String {
+        val backup = com.example.data.BackupData(
+            positions = positions.value,
+            fixedDeposits = fixedDeposits.value,
+            unitTrusts = unitTrusts.value,
+            crypto = crypto.value,
+            otherInvestments = otherInvestments.value
+        )
+        return com.google.gson.Gson().toJson(backup)
+    }
+
+    fun importBackup(json: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val backup = com.google.gson.Gson().fromJson(json, com.example.data.BackupData::class.java)
+                if (backup != null) {
+                    repository.replaceWithBackup(backup)
+                    kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(true) }
+                } else {
+                    kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(false) }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(false) }
+            }
+        }
     }
 
     init {

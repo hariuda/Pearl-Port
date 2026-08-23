@@ -507,7 +507,10 @@ fun OtherTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphi
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("${com.example.ui.components.FormatUtils.numberFormatter.format(o.quantity)} @ ${currencyFormatter.format(o.averagePrice)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                val isGold = o.name.contains("Gold", ignoreCase = true) || o.type.contains("Gold", ignoreCase = true)
+                                val qtyStr = com.example.ui.components.FormatUtils.numberFormatter.format(o.quantity)
+                                val qtyLabel = if (isGold) "$qtyStr g" else qtyStr
+                                Text("$qtyLabel @ ${currencyFormatter.format(o.averagePrice)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
                                     text = currencyFormatter.format(o.currentPrice),
                                     color = if (isProfit) ProfitGreen else LossRed,

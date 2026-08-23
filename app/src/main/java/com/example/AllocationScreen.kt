@@ -51,8 +51,11 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
     if (totalStocksValue > 0) assetClassMap["Equities"] = totalStocksValue
     if (totalFdValue > 0) assetClassMap["Fixed Deposits"] = totalFdValue
     if (totalUTValue > 0) assetClassMap["Unit Trusts"] = totalUTValue
-    if (totalCryptoValue > 0) assetClassMap["Crypto"] = totalCryptoValue
-    if (totalOtherValue > 0) assetClassMap["Other"] = totalOtherValue
+    if (totalCryptoValue > 0) assetClassMap["Crypto Currency"] = totalCryptoValue
+    if (totalOtherValue > 0) assetClassMap["Gold & Other"] = totalOtherValue
+
+    val chartPaletteName by viewModel.chartColorPalette.collectAsStateWithLifecycle()
+    val palette = com.example.ui.theme.ChartColors.getPalette(chartPaletteName)
 
     Scaffold(
         topBar = {
@@ -75,18 +78,18 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color(0xFFF7F8FC))
+                .background(MaterialTheme.colorScheme.background)
         ) {
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 SectionTitle("Asset Classes", "")
-                AllocationSection(data = assetClassMap, total = totalAssets)
+                AllocationSection(data = assetClassMap, total = totalAssets, palette = palette)
             }
 
             if (totalStocksValue > 0) {
                 item {
                     SectionTitle("Equities by Sector", "")
-                    AllocationSection(data = sectorMap, total = totalStocksValue)
+                    AllocationSection(data = sectorMap, total = totalStocksValue, palette = palette)
                 }
             }
 
@@ -96,7 +99,7 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
                 fds.forEach { fdMap[it.bankName] = (fdMap[it.bankName] ?: 0.0) + it.currentValue }
                 item {
                     SectionTitle("Fixed Deposits by Institution", "")
-                    AllocationSection(data = fdMap, total = totalFdValue)
+                    AllocationSection(data = fdMap, total = totalFdValue, palette = palette)
                 }
             }
 
@@ -109,7 +112,7 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
                 }
                 item {
                     SectionTitle("Unit Trusts by Fund", "")
-                    AllocationSection(data = utMap, total = totalUTValue)
+                    AllocationSection(data = utMap, total = totalUTValue, palette = palette)
                 }
             }
 
@@ -123,7 +126,7 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
                 }
                 item {
                     SectionTitle("Crypto by Asset", "")
-                    AllocationSection(data = cryptoMap, total = totalCryptoValue)
+                    AllocationSection(data = cryptoMap, total = totalCryptoValue, palette = palette)
                 }
             }
 
@@ -135,20 +138,20 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
 }
 
 @Composable
-fun AllocationSection(data: Map<String, Double>, total: Double) {
+fun AllocationSection(data: Map<String, Double>, total: Double, palette: Map<String, Color>) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             val sortedData = data.entries.sortedByDescending { it.value }
-            val paletteValues = com.example.ui.theme.ChartColors.getPalette("Default").values.toList()
-            val fallbackColor = Color(0xFF4A3B8C)
+            val paletteValues = palette.values.toList()
+            val fallbackColor = MaterialTheme.colorScheme.primaryContainer
             
             sortedData.forEachIndexed { index, entry ->
                 val percentage = if (total > 0) (entry.value / total) * 100 else 0.0
-                val color = if (paletteValues.isNotEmpty()) paletteValues[index % paletteValues.size] else fallbackColor
+                val color = palette[entry.key] ?: (if (paletteValues.isNotEmpty()) paletteValues[index % paletteValues.size] else fallbackColor)
                 
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -164,7 +167,7 @@ fun AllocationSection(data: Map<String, Double>, total: Double) {
                 }
                 
                 if (index < sortedData.size - 1) {
-                    HorizontalDivider(color = Color(0xFFF0F0F0))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                 }
             }
         }
