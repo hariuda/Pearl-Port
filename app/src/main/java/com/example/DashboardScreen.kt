@@ -1,4 +1,6 @@
 package com.example
+import androidx.compose.material3.OutlinedCard
+import kotlinx.coroutines.launch
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -199,7 +201,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
             val periodReturn = if (initialVal > 0) ((totalAssets - initialVal) / initialVal) * 100 else 0.0
             
             SectionTitle("Portfolio Performance", "")
-            Card(
+            OutlinedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -304,7 +306,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
         }
 
         item {
-            Card(
+            OutlinedCard(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp)
@@ -352,7 +354,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
         
         item {
             SectionTitle("Top Holdings", "")
-            Card(
+            OutlinedCard(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp)
@@ -371,7 +373,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
@@ -389,52 +391,83 @@ fun HeaderSection(viewModel: PortfolioViewModel) {
     var nameInput by remember { mutableStateOf(currentUserName) }
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let {
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val json = viewModel.exportBackup()
+                    context.contentResolver.openOutputStream(it)?.use { os ->
+                        os.write(json.toByteArray())
+                    }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Backup saved successfully", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Failed to save backup", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val json = context.contentResolver.openInputStream(it)?.bufferedReader().use { reader -> reader?.readText() }
+                    if (json != null) {
+                        viewModel.importBackup(json) { success ->
+                            if (success) {
+                                android.widget.Toast.makeText(context, "Backup restored successfully", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                android.widget.Toast.makeText(context, "Invalid backup data", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Failed to read backup", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
 
     if (showBackupDialog) {
-        var backupJsonInput by remember { mutableStateOf("") }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showBackupDialog = false },
             title = { Text("Backup & Restore") },
             text = {
                 Column {
-                    Text("Copy your backup data to keep it safe, or paste a previous backup here to restore it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    androidx.compose.material3.OutlinedTextField(
-                        value = backupJsonInput,
-                        onValueChange = { backupJsonInput = it },
-                        label = { Text("Paste Backup Data Here") },
-                        modifier = Modifier.fillMaxWidth().height(120.dp)
-                    )
+                    Text("Save all your portfolio data and settings to a file, or restore from a previous backup file.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             confirmButton = {
                 Column(horizontalAlignment = Alignment.End) {
                     androidx.compose.material3.TextButton(onClick = {
-                        val backupStr = viewModel.exportBackup()
-                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(backupStr))
-                        android.widget.Toast.makeText(context, "Backup copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                        showBackupDialog = false
+                        exportLauncher.launch("pearlport_backup.json")
                     }) {
-                        Text("Copy Backup")
+                        Text("Export Backup File")
                     }
                     androidx.compose.material3.TextButton(onClick = {
-                        if (backupJsonInput.isNotBlank()) {
-                            viewModel.importBackup(backupJsonInput) { success ->
-                                if (success) {
-                                    android.widget.Toast.makeText(context, "Backup restored successfully", android.widget.Toast.LENGTH_SHORT).show()
-                                    showBackupDialog = false
-                                } else {
-                                    android.widget.Toast.makeText(context, "Invalid backup data", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
+                        showBackupDialog = false
+                        importLauncher.launch(arrayOf("application/json", "*/*"))
                     }) {
-                        Text("Restore")
+                        Text("Restore from File")
                     }
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { showBackupDialog = false }) {
-                    Text("Close")
+                    androidx.compose.material3.TextButton(onClick = { showBackupDialog = false }) {
+                        Text("Close")
+                    }
                 }
             }
         )
@@ -632,12 +665,6 @@ fun PortfolioSummaryCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(Icons.Filled.Visibility, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
                     }
-                    Box(modifier = Modifier.background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.1f), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 4.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("LKR", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelSmall)
-                            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
-                        }
-                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -676,7 +703,7 @@ fun PortfolioSummaryCard(
             }
         }
 
-        Card(
+        OutlinedCard(
             modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(horizontal = 12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(12.dp),

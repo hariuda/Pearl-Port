@@ -15,6 +15,15 @@ val TextPrimary = Color(0xFF1A1A1A)
 val TextSecondary = Color(0xFF8C8C8C)
 val SurfacePaper = Color(0xFFFFFFFF)
 
+// Dark Theme Colors
+val TextPrimaryDark = Color(0xFFF8FAFC)
+val TextSecondaryDark = Color(0xFF8A8F9E)
+val BackgroundDark = Color(0xFF0A0D14)
+val SurfaceDark = Color(0xFF131620)
+val SurfaceVariantDark = Color(0xFF1A1D29)
+val BorderDark = Color(0xFF24283B)
+val PearlPurpleDark = Color(0xFF5B43D6)
+
 val NavyBlue = PearlPurple
 val DeepNavy = PearlPurpleLight
 val LightNavy = PearlPurpleLight

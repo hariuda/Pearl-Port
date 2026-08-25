@@ -5,5 +5,8 @@ data class BackupData(
     val fixedDeposits: List<FixedDeposit> = emptyList(),
     val unitTrusts: List<UnitTrust> = emptyList(),
     val crypto: List<Crypto> = emptyList(),
-    val otherInvestments: List<OtherInvestment> = emptyList()
+    val otherInvestments: List<OtherInvestment> = emptyList(),
+    val userName: String? = null,
+    val themePreference: String? = null,
+    val chartColorPalette: String? = null
 )

@@ -1,4 +1,5 @@
 package com.example
+import androidx.compose.material3.OutlinedCard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -139,7 +140,7 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
 
 @Composable
 fun AllocationSection(data: Map<String, Double>, total: Double, palette: Map<String, Color>) {
-    Card(
+    OutlinedCard(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp)

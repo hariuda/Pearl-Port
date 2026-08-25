@@ -1,4 +1,5 @@
 package com.example
+import androidx.compose.material3.OutlinedCard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -6,6 +7,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Domain
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.CurrencyBitcoin
+import androidx.compose.material.icons.filled.Toll
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.TrendingDown
@@ -68,10 +75,26 @@ fun PortfolioScreen(viewModel: PortfolioViewModel) {
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
                         text = { 
-                            Text(
-                                text = title,
-                                color = if (selectedTabIndex == index) tabColor else MaterialTheme.colorScheme.onSurfaceVariant
-                            ) 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val icon = when (title) {
+                                    "Equities" -> Icons.Filled.Domain
+                                    "Fixed Deposits" -> Icons.Filled.AccountBalance
+                                    "Unit Trusts" -> Icons.Filled.PieChart
+                                    "Crypto Currency" -> Icons.Filled.CurrencyBitcoin
+                                    "Gold & Other" -> Icons.Filled.Toll
+                                    else -> Icons.Filled.Info
+                                }
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp).padding(end = 6.dp),
+                                    tint = if (selectedTabIndex == index) tabColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = title,
+                                    color = if (selectedTabIndex == index) tabColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     )
                 }
@@ -130,7 +153,7 @@ fun EquitiesTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.gra
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(groupedPositions.entries.toList(), key = { it.key }) { (symbol, lots) ->
+        items(groupedPositions.entries.toList().sortedBy { it.value.first().companyName.lowercase() }, key = { it.key }) { (symbol, lots) ->
             SwipeToEditDeleteContainer(
                 onDelete = { lots.forEach { viewModel.removePosition(it.id) } },
                 onEdit = { onEdit(lots.first()) }
@@ -173,7 +196,7 @@ fun GroupedPortfolioCard(
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "LK"))
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
-    Card(
+    OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp),
@@ -297,12 +320,12 @@ fun FDsTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphics
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(fds, key = { it.id }) { fd ->
+        items(fds.sortedBy { it.bankName.lowercase() }, key = { it.id }) { fd ->
             SwipeToEditDeleteContainer(
                 onDelete = { viewModel.removeFixedDeposit(fd.id) },
                 onEdit = { onEdit(fd) }
             ) {
-                Card(
+                OutlinedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
@@ -372,13 +395,13 @@ fun UnitTrustsTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.g
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(uts, key = { it.id }) { ut ->
+        items(uts.sortedBy { it.fundName.lowercase() }, key = { it.id }) { ut ->
             val totalValue = ut.currentNav * ut.units
             SwipeToEditDeleteContainer(
                 onDelete = { viewModel.removeUnitTrust(ut.id) },
                 onEdit = { onEdit(ut) }
             ) {
-                Card(
+                OutlinedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
@@ -413,14 +436,14 @@ fun CryptoTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graph
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(crypto, key = { it.id }) { c ->
+        items(crypto.sortedBy { it.symbol.lowercase() }, key = { it.id }) { c ->
             val isProfit = c.currentPrice >= c.averagePrice
             val totalValue = c.currentPrice * c.quantity
             SwipeToEditDeleteContainer(
                 onDelete = { viewModel.removeCrypto(c.id) },
                 onEdit = { onEdit(c) }
             ) {
-                Card(
+                OutlinedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
@@ -472,7 +495,7 @@ fun OtherTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphi
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(other, key = { it.id }) { o ->
+        items(other.sortedBy { it.name.lowercase() }, key = { it.id }) { o ->
             val hasQuantity = o.quantity > 0
             val isProfit = if (hasQuantity) o.currentPrice >= o.averagePrice else true
             val totalValue = if (hasQuantity) o.currentPrice * o.quantity else o.value
@@ -481,7 +504,7 @@ fun OtherTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphi
                 onDelete = { viewModel.removeOtherInvestment(o.id) },
                 onEdit = { onEdit(o) }
             ) {
-                Card(
+                OutlinedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)

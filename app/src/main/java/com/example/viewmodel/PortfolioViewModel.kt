@@ -69,7 +69,10 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
             fixedDeposits = fixedDeposits.value,
             unitTrusts = unitTrusts.value,
             crypto = crypto.value,
-            otherInvestments = otherInvestments.value
+            otherInvestments = otherInvestments.value,
+            userName = userName.value,
+            themePreference = themePreference.value,
+            chartColorPalette = chartColorPalette.value
         )
         return com.google.gson.Gson().toJson(backup)
     }
@@ -80,6 +83,9 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
                 val backup = com.google.gson.Gson().fromJson(json, com.example.data.BackupData::class.java)
                 if (backup != null) {
                     repository.replaceWithBackup(backup)
+                    backup.userName?.let { setUserName(it) }
+                    backup.themePreference?.let { setThemePreference(it) }
+                    backup.chartColorPalette?.let { setChartColorPalette(it) }
                     kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(true) }
                 } else {
                     kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(false) }
