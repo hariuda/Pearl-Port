@@ -46,12 +46,12 @@ object ChartColors {
 }
 
 private val ElegantDarkColorScheme = darkColorScheme(
-    primary = PearlPurpleDark,
-    onPrimary = BackgroundDark,
-    primaryContainer = PearlPurple,
-    onPrimaryContainer = SurfacePaper,
-    secondary = PearlPurpleLight,
-    onSecondary = SurfacePaper,
+    primary = HighlightDark,
+    onPrimary = Color.White,
+    primaryContainer = PrimaryAccentDark,
+    onPrimaryContainer = Color.White,
+    secondary = HighlightDark,
+    onSecondary = Color.White,
     background = BackgroundDark,
     onBackground = TextPrimaryDark,
     surface = SurfaceDark,
@@ -83,21 +83,10 @@ private val ElegantLightColorScheme = lightColorScheme(
 
 @Composable
 fun MyApplicationTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  dynamicColor: Boolean = true,
-  content: @Composable () -> Unit,
+  content: @Composable () -> Unit
 ) {
-  val colorScheme = when {
-    darkTheme -> ElegantDarkColorScheme
-    dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-      val context = LocalContext.current
-      dynamicLightColorScheme(context)
-    }
-    else -> ElegantLightColorScheme
-  }
-
   MaterialTheme(
-    colorScheme = colorScheme,
+    colorScheme = ElegantLightColorScheme,
     typography = Typography,
     content = content
   )

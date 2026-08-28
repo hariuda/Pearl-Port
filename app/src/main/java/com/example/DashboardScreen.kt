@@ -37,10 +37,15 @@ import com.example.ui.components.SectorPieChart
 import com.example.viewmodel.PortfolioViewModel
 import com.example.ui.theme.LossRed
 import com.example.ui.theme.ProfitGreen
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.TextStyle
 import java.text.NumberFormat
 import java.util.Locale
 
 // Custom colors based on the image
+
+data class HoldingSummary(val name: String, val value: Double, val returnPct: Double)
 
 @Composable
 fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () -> Unit = {}) {
@@ -134,7 +139,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
             }
 
             val numPoints = 20
-            val chartPoints = remember(startMillis, positions, fds, unitTrusts, crypto, otherInvestments) {
+            val chartData = remember(startMillis, positions, fds, unitTrusts, crypto, otherInvestments) {
                 val step = (now - startMillis) / numPoints.coerceAtLeast(1)
                 var maxVal = 0.0
                 var minVal = Double.MAX_VALUE
@@ -182,12 +187,16 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
                 }
                 
                 val range = maxVal - minVal
-                if (range == 0.0) {
+                val points = if (range == 0.0) {
                     List(numPoints + 1) { 0.5f }
                 } else {
                     rawValues.map { (1.0 - (it - minVal) / range).toFloat() }
                 }
+                Triple(points, minVal, maxVal)
             }
+            val chartPoints = chartData.first
+            val chartMin = chartData.second
+            val chartMax = chartData.third
             
             val initialVal = remember(startMillis, positions, fds, unitTrusts, crypto, otherInvestments) {
                 var valueAtStart = 0.0
@@ -201,7 +210,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
             val periodReturn = if (initialVal > 0) ((totalAssets - initialVal) / initialVal) * 100 else 0.0
             
             SectionTitle("Portfolio Performance", "")
-            OutlinedCard(
+            com.example.ui.components.GradientOutlinedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -222,11 +231,57 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    Box(modifier = Modifier.fillMaxWidth().height(160.dp).background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val path = Path()
+                    val textMeasurer = rememberTextMeasurer()
+                    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    
+                    Box(modifier = Modifier.fillMaxWidth().height(200.dp).background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                        Canvas(modifier = Modifier.fillMaxSize().padding(top = 16.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)) {
                             val width = size.width
-                            val height = size.height
+                            val height = size.height - 20.dp.toPx()
+                            
+                            val gridLines = 4
+                            for (i in 0 until gridLines) {
+                                val y = height * (i / (gridLines - 1).toFloat())
+                                drawLine(
+                                    color = gridColor,
+                                    start = androidx.compose.ui.geometry.Offset(0f, y),
+                                    end = androidx.compose.ui.geometry.Offset(width, y),
+                                    strokeWidth = 1.dp.toPx()
+                                )
+                                
+                                val value = chartMax - (chartMax - chartMin) * (i / (gridLines - 1).toFloat())
+                                val formattedValue = if (value >= 1_000_000) {
+                                    String.format(java.util.Locale.US, "%.1fM", value / 1_000_000)
+                                } else if (value >= 1_000) {
+                                    String.format(java.util.Locale.US, "%.1fK", value / 1_000)
+                                } else {
+                                    String.format(java.util.Locale.US, "%.0f", value)
+                                }
+                                
+                                drawText(
+                                    textMeasurer = textMeasurer,
+                                    text = formattedValue,
+                                    style = TextStyle(color = labelColor, fontSize = 10.sp),
+                                    topLeft = androidx.compose.ui.geometry.Offset(0f, y - 14.dp.toPx())
+                                )
+                            }
+                            
+                            // Horizontal axis labels (dates)
+                            val numLabels = 4
+                            val dateFormat = java.text.SimpleDateFormat(if (selectedTimeRange == "1D") "HH:mm" else if (selectedTimeRange == "ALL") "yyyy" else "MMM dd", java.util.Locale.US)
+                            for (i in 0 until numLabels) {
+                                val t = startMillis + (now - startMillis) * (i / (numLabels - 1).toFloat())
+                                val label = dateFormat.format(java.util.Date(t.toLong()))
+                                val textResult = textMeasurer.measure(label, TextStyle(color = labelColor, fontSize = 10.sp))
+                                val xPos = if (i == 0) 0f else if (i == numLabels - 1) width - textResult.size.width else width * (i / (numLabels - 1).toFloat()) - textResult.size.width / 2f
+                                drawText(
+                                    textLayoutResult = textResult,
+                                    topLeft = androidx.compose.ui.geometry.Offset(xPos, height + 6.dp.toPx())
+                                )
+                            }
+                            
+                            val path = Path()
                             
                             val mappedPoints = chartPoints.mapIndexed { index, y ->
                                 (index.toFloat() / numPoints) to y
@@ -306,7 +361,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
         }
 
         item {
-            OutlinedCard(
+            com.example.ui.components.GradientOutlinedCard(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(12.dp)
@@ -341,38 +396,59 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        "View full allocation", 
-                        color = MaterialTheme.colorScheme.primaryContainer, 
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.clickable { onNavigateToAllocation() }
-                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
-        
-        item {
-            SectionTitle("Top Holdings", "")
-            OutlinedCard(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    positions.sortedByDescending { it.currentPrice * it.quantity }.take(5).forEach { p ->
-                        val value = p.currentPrice * p.quantity
-                        val returnPct = if (p.averagePrice > 0) ((p.currentPrice - p.averagePrice) / p.averagePrice) * 100 else 0.0
-                        HoldingRow(
-                            name = p.companyName,
-                            value = currencyFormatter.format(value),
-                            weight = String.format("%.1f%%", if (totalAssets > 0) (value / totalAssets) * 100 else 0.0),
-                            change = String.format("%s%.2f%%", if (returnPct >= 0) "+" else "", returnPct),
-                            isProfit = returnPct >= 0
-                        )
-                    }
+
+        if (totalStocksValue > 0) {
+            item {
+                SectionTitle("Equities by Sector", "")
+                val equitiesSectorMap = mutableMapOf<String, Double>()
+                positions.forEach { p ->
+                    val currentPrice = if (p.currentPrice > 0) p.currentPrice else p.averagePrice
+                    val value = currentPrice * p.quantity
+                    equitiesSectorMap[p.sector] = (equitiesSectorMap[p.sector] ?: 0.0) + value
                 }
+                AllocationSection(data = equitiesSectorMap, total = totalStocksValue, palette = palette)
             }
+        }
+
+        if (fds.isNotEmpty()) {
+            val fdMap = mutableMapOf<String, Double>()
+            fds.forEach { fdMap[it.bankName] = (fdMap[it.bankName] ?: 0.0) + it.currentValue }
+            item {
+                SectionTitle("Fixed Deposits by Institution", "")
+                AllocationSection(data = fdMap, total = totalFdValue, palette = palette)
+            }
+        }
+
+        if (unitTrusts.isNotEmpty()) {
+            val utMap = mutableMapOf<String, Double>()
+            unitTrusts.forEach { 
+                val value = it.currentNav * it.units
+                utMap[it.fundName] = (utMap[it.fundName] ?: 0.0) + value 
+            }
+            item {
+                SectionTitle("Unit Trusts by Fund", "")
+                AllocationSection(data = utMap, total = totalUTValue, palette = palette)
+            }
+        }
+
+        if (crypto.isNotEmpty()) {
+            val cryptoMap = mutableMapOf<String, Double>()
+            crypto.forEach {
+                val currentPrice = if (it.currentPrice > 0) it.currentPrice else it.averagePrice
+                val value = currentPrice * it.quantity
+                cryptoMap[it.symbol] = (cryptoMap[it.symbol] ?: 0.0) + value
+            }
+            item {
+                SectionTitle("Crypto by Asset", "")
+                AllocationSection(data = cryptoMap, total = totalCryptoValue, palette = palette)
+            }
+        }
+
+        item {
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
@@ -383,7 +459,6 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
 @Composable
 fun HeaderSection(viewModel: PortfolioViewModel) {
     var menuExpanded by remember { mutableStateOf(false) }
-    var showThemeDialog by remember { mutableStateOf(false) }
     var showAccountDialog by remember { mutableStateOf(false) }
     var showBackupDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -526,52 +601,9 @@ fun HeaderSection(viewModel: PortfolioViewModel) {
         )
     }
 
-    if (showThemeDialog) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = { Text("Select Theme") },
-            text = {
-                Column {
-                    val currentTheme by viewModel.themePreference.collectAsStateWithLifecycle()
-                    listOf("Original", "Light", "Dark").forEach { themeName ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.setThemePreference(themeName)
-                                    showThemeDialog = false
-                                }
-                                .padding(vertical = 12.dp)
-                        ) {
-                            androidx.compose.material3.RadioButton(
-                                selected = currentTheme == themeName,
-                                onClick = {
-                                    viewModel.setThemePreference(themeName)
-                                    showThemeDialog = false
-                                }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(themeName, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { showThemeDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        val currentTheme by viewModel.themePreference.collectAsStateWithLifecycle()
-        val bannerRes = when (currentTheme) {
-            "Dark" -> R.drawable.app_banner_dark
-            "Light" -> R.drawable.app_banner_light
-            else -> R.drawable.app_banner
-        }
+        val bannerRes = R.drawable.app_banner
         androidx.compose.foundation.Image(
             painter = androidx.compose.ui.res.painterResource(id = bannerRes),
             contentDescription = "Pearl Port Banner",
@@ -615,13 +647,6 @@ fun HeaderSection(viewModel: PortfolioViewModel) {
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Theme") },
-                            onClick = { 
-                                menuExpanded = false
-                                showThemeDialog = true
-                            }
-                        )
-                        DropdownMenuItem(
                             text = { Text("Backup & Restore") },
                             onClick = { 
                                 menuExpanded = false 
@@ -653,19 +678,22 @@ fun PortfolioSummaryCard(
     Box(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(240.dp)
     ) {
+        val gradientBrush = Brush.linearGradient(
+            colors = listOf(
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.secondary
+            )
+        )
         Card(
             modifier = Modifier.fillMaxWidth().height(190.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.fillMaxSize().background(gradientBrush)) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Total Portfolio Value", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.Filled.Visibility, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
                     }
-                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = formatter.format(totalValue).replace("LKR", "LKR "), 
@@ -701,22 +729,29 @@ fun PortfolioSummaryCard(
                     }
                 }
             }
+            }
         }
 
-        OutlinedCard(
+        val investedGradientBrush = androidx.compose.ui.graphics.Brush.verticalGradient(
+            colors = listOf(androidx.compose.ui.graphics.Color(0xFFF8F9FA), androidx.compose.ui.graphics.Color(0xFFFFFFFF))
+        )
+
+        Card(
             modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(horizontal = 12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
             shape = RoundedCornerShape(12.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Invested", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(formatter.format(invested).replace("LKR", "LKR "), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+            Box(modifier = Modifier.fillMaxWidth().background(investedGradientBrush)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Invested", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(formatter.format(invested).replace("LKR", "LKR "), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

@@ -89,15 +89,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val viewModel: PortfolioViewModel = viewModel()
-            val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
-            val darkTheme = when (themePreference) {
-                "Light" -> false
-                "Dark" -> true
-                else -> false // Original defaults to false or you can change
-            }
-            val dynamicColor = themePreference != "Original"
+            MyApplicationTheme {
 
-            MyApplicationTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
                 val navController = rememberNavController()
                 var showMenu by remember { mutableStateOf(false) }
 

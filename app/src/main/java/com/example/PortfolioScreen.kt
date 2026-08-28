@@ -147,6 +147,7 @@ fun PortfolioScreen(viewModel: PortfolioViewModel) {
 fun EquitiesTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphics.Color, onEdit: (Any) -> Unit) {
     val positions by viewModel.positions.collectAsStateWithLifecycle()
     val groupedPositions = remember(positions) { positions.groupBy { it.symbol } }
+    if (positions.isEmpty()) { com.example.ui.components.EmptyPortfolioState(); return }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -196,7 +197,7 @@ fun GroupedPortfolioCard(
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "LK"))
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
 
-    OutlinedCard(
+    com.example.ui.components.GradientOutlinedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(12.dp),
@@ -312,6 +313,7 @@ fun GroupedPortfolioCard(
 @Composable
 fun FDsTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphics.Color, onEdit: (Any) -> Unit) {
     val fds by viewModel.fixedDeposits.collectAsStateWithLifecycle()
+    if (fds.isEmpty()) { com.example.ui.components.EmptyPortfolioState(); return }
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "LK"))
     val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
 
@@ -325,7 +327,7 @@ fun FDsTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphics
                 onDelete = { viewModel.removeFixedDeposit(fd.id) },
                 onEdit = { onEdit(fd) }
             ) {
-                OutlinedCard(
+                com.example.ui.components.GradientOutlinedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
@@ -388,6 +390,7 @@ fun FDsTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphics
 @Composable
 fun UnitTrustsTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphics.Color, onEdit: (Any) -> Unit) {
     val uts by viewModel.unitTrusts.collectAsStateWithLifecycle()
+    if (uts.isEmpty()) { com.example.ui.components.EmptyPortfolioState(); return }
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "LK"))
 
     LazyColumn(
@@ -401,7 +404,7 @@ fun UnitTrustsTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.g
                 onDelete = { viewModel.removeUnitTrust(ut.id) },
                 onEdit = { onEdit(ut) }
             ) {
-                OutlinedCard(
+                com.example.ui.components.GradientOutlinedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
@@ -429,6 +432,7 @@ fun UnitTrustsTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.g
 @Composable
 fun CryptoTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphics.Color, onEdit: (Any) -> Unit) {
     val crypto by viewModel.crypto.collectAsStateWithLifecycle()
+    if (crypto.isEmpty()) { com.example.ui.components.EmptyPortfolioState(); return }
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "LK")) // LKR for crypto
 
     LazyColumn(
@@ -443,7 +447,7 @@ fun CryptoTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graph
                 onDelete = { viewModel.removeCrypto(c.id) },
                 onEdit = { onEdit(c) }
             ) {
-                OutlinedCard(
+                com.example.ui.components.GradientOutlinedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
@@ -488,6 +492,7 @@ fun CryptoTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graph
 @Composable
 fun OtherTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphics.Color, onEdit: (Any) -> Unit) {
     val other by viewModel.otherInvestments.collectAsStateWithLifecycle()
+    if (other.isEmpty()) { com.example.ui.components.EmptyPortfolioState(); return }
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("en", "LK"))
 
     LazyColumn(
@@ -504,7 +509,7 @@ fun OtherTab(viewModel: PortfolioViewModel, tabColor: androidx.compose.ui.graphi
                 onDelete = { viewModel.removeOtherInvestment(o.id) },
                 onEdit = { onEdit(o) }
             ) {
-                OutlinedCard(
+                com.example.ui.components.GradientOutlinedCard(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)

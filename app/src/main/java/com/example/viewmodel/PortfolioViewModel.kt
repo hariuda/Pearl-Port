@@ -39,8 +39,6 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
     private val _chartColorPalette = MutableStateFlow(prefs.getString("chart_palette", "Default") ?: "Default")
     val chartColorPalette: StateFlow<String> = _chartColorPalette
 
-    private val _themePreference = MutableStateFlow(prefs.getString("app_theme", "Original") ?: "Original")
-    val themePreference: StateFlow<String> = _themePreference
 
     private val _userName = MutableStateFlow(prefs.getString("user_name", "Guest") ?: "Guest")
     val userName: StateFlow<String> = _userName
@@ -53,10 +51,6 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
         _chartColorPalette.value = paletteName
     }
 
-    fun setThemePreference(themeName: String) {
-        prefs.edit().putString("app_theme", themeName).apply()
-        _themePreference.value = themeName
-    }
 
     fun setUserName(name: String) {
         prefs.edit().putString("user_name", name).apply()
@@ -71,7 +65,6 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
             crypto = crypto.value,
             otherInvestments = otherInvestments.value,
             userName = userName.value,
-            themePreference = themePreference.value,
             chartColorPalette = chartColorPalette.value
         )
         return com.google.gson.Gson().toJson(backup)
@@ -84,7 +77,6 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
                 if (backup != null) {
                     repository.replaceWithBackup(backup)
                     backup.userName?.let { setUserName(it) }
-                    backup.themePreference?.let { setThemePreference(it) }
                     backup.chartColorPalette?.let { setChartColorPalette(it) }
                     kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(true) }
                 } else {
@@ -133,49 +125,7 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
             viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
         )
 
-        // Seed some initial data if empty
-        viewModelScope.launch {
-            repository.allPositions.collect { list ->
-                if (list.isEmpty()) {
-                    repository.insertPosition(StockPosition(symbol = "COMB.N0000", companyName = "Commercial Bank", quantity = 1000, averagePrice = 90.0, sector = "Banks"))
-                    repository.insertPosition(StockPosition(symbol = "JKH.N0000", companyName = "John Keells", quantity = 500, averagePrice = 180.0, sector = "Capital Goods"))
-                    repository.insertPosition(StockPosition(symbol = "SAMP.N0000", companyName = "Sampath Bank", quantity = 2000, averagePrice = 75.0, sector = "Banks"))
-                    repository.insertPosition(StockPosition(symbol = "DIAL.N0000", companyName = "Dialog Axiata", quantity = 10000, averagePrice = 10.5, sector = "Telecommunication"))
-                }
-            }
-        }
-        
-        viewModelScope.launch {
-            repository.allFixedDeposits.collect { list ->
-                if (list.isEmpty()) {
-                    repository.insertFixedDeposit(FixedDeposit(bankName = "Bank of Ceylon", principalAmount = 1000000.0, interestRate = 8.5, maturityDate = System.currentTimeMillis() + 31536000000L))
-                }
-            }
-        }
-        
-        viewModelScope.launch {
-            repository.allUnitTrusts.collect { list ->
-                if (list.isEmpty()) {
-                    repository.insertUnitTrust(UnitTrust(fundName = "CAL Money Market Fund", units = 10000.0, averageNav = 15.0, currentNav = 15.5))
-                }
-            }
-        }
-        
-        viewModelScope.launch {
-            repository.allCrypto.collect { list ->
-                if (list.isEmpty()) {
-                    repository.insertCrypto(Crypto(symbol = "BTC", quantity = 0.5, averagePrice = 60000.0, currentPrice = 62000.0))
-                }
-            }
-        }
-        
-        viewModelScope.launch {
-            repository.allOtherInvestments.collect { list ->
-                if (list.isEmpty()) {
-                    repository.insertOtherInvestment(OtherInvestment(name = "Gold Sovereigns", type = "Gold", value = 500000.0))
-                }
-            }
-        }
+        // Removed auto-seeding of mock data when empty so EmptyPortfolioState can be shown
 
         // Poll for real-time price updates
         viewModelScope.launch {
