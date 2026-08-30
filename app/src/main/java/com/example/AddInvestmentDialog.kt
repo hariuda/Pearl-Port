@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Switch
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.data.Crypto
@@ -49,6 +51,7 @@ fun AddInvestmentDialog(
     }
     var periodStr by remember { mutableStateOf("12") }
     var isMonthlyInterest by remember { mutableStateOf(false) }
+    var hasAitDeduction by remember { mutableStateOf(false) }
 
     LaunchedEffect(itemToEdit) {
         if (itemToEdit != null) {
@@ -70,6 +73,7 @@ fun AddInvestmentDialog(
                     dateStr = format.format(Date(itemToEdit.startDate))
                     periodStr = itemToEdit.periodMonths.toString()
                     isMonthlyInterest = itemToEdit.isMonthlyInterest
+                    hasAitDeduction = itemToEdit.hasAitDeduction
                 }
                 is UnitTrust -> {
                     name = itemToEdit.fundName
@@ -130,7 +134,13 @@ fun AddInvestmentDialog(
             ) {
                 when (tabIndex) {
                     0 -> {
-                        OutlinedTextField(value = symbol, onValueChange = { symbol = it }, label = { Text("Symbol (e.g. COMB.N0000)") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(
+                            value = symbol,
+                            onValueChange = { symbol = it.uppercase() },
+                            label = { Text("Symbol (e.g. COMB.N0000)") },
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Company Name") }, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = quantity, onValueChange = { quantity = it.replace(",", "") }, visualTransformation = com.example.ui.components.NumberCommaVisualTransformation(), label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = price, onValueChange = { price = it.replace(",", "") }, visualTransformation = com.example.ui.components.NumberCommaVisualTransformation(), label = { Text("Average Price") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
@@ -152,6 +162,20 @@ fun AddInvestmentDialog(
                             Switch(
                                 checked = isMonthlyInterest,
                                 onCheckedChange = { isMonthlyInterest = it }
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("AIT Deduction", style = MaterialTheme.typography.bodyMedium)
+                                Text("Deduct withholding tax 10%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = hasAitDeduction,
+                                onCheckedChange = { hasAitDeduction = it }
                             )
                         }
                     }
@@ -194,7 +218,7 @@ fun AddInvestmentDialog(
                             0 -> {
                                 val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                                 val date = format.parse(dateStr)?.time ?: System.currentTimeMillis()
-                                viewModel.addPosition(StockPosition(id = editId, symbol = symbol, companyName = name, quantity = quantity.toIntOrNull() ?: 0, averagePrice = price.toDoubleOrNull() ?: 0.0, sector = typeSector, purchaseDate = date))
+                                viewModel.addPosition(StockPosition(id = editId, symbol = symbol.trim().uppercase(), companyName = name.trim(), quantity = quantity.toIntOrNull() ?: 0, averagePrice = price.toDoubleOrNull() ?: 0.0, sector = typeSector, purchaseDate = date))
                             }
                             1 -> {
                                 val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -205,7 +229,19 @@ fun AddInvestmentDialog(
                                     add(java.util.Calendar.MONTH, periodMonths)
                                 }
                                 val maturityDate = maturityCalendar.timeInMillis
-                                viewModel.addFixedDeposit(FixedDeposit(id = editId, bankName = name, principalAmount = quantity.toDoubleOrNull() ?: 0.0, interestRate = price.toDoubleOrNull() ?: 0.0, maturityDate = maturityDate, isMonthlyInterest = isMonthlyInterest, startDate = startDate, periodMonths = periodMonths))
+                                viewModel.addFixedDeposit(
+                                    FixedDeposit(
+                                        id = editId,
+                                        bankName = name,
+                                        principalAmount = quantity.toDoubleOrNull() ?: 0.0,
+                                        interestRate = price.toDoubleOrNull() ?: 0.0,
+                                        maturityDate = maturityDate,
+                                        isMonthlyInterest = isMonthlyInterest,
+                                        startDate = startDate,
+                                        periodMonths = periodMonths,
+                                        hasAitDeduction = hasAitDeduction
+                                    )
+                                )
                             }
                             2 -> {
                                 viewModel.addUnitTrust(UnitTrust(id = editId, fundName = name, units = quantity.toDoubleOrNull() ?: 0.0, averageNav = price.toDoubleOrNull() ?: 0.0, currentNav = (itemToEdit as? UnitTrust)?.currentNav ?: (price.toDoubleOrNull() ?: 0.0)))

@@ -104,13 +104,13 @@ dependencies {
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:
-  implementation(libs.firebase.firestore)
+  // implementation(libs.firebase.firestore)
 
   // Uncomment ALL FOUR of the following dependencies together to use Firebase Auth and Google
   // Sign-In via Credential Manager:
   // implementation(libs.firebase.auth)
   // implementation(libs.androidx.credentials)
-  implementation(libs.androidx.credentials.play.services)
+  // implementation(libs.androidx.credentials.play.services)
   // implementation(libs.googleid)
   implementation(libs.firebase.appcheck.recaptcha)
   implementation(libs.kotlinx.coroutines.android)
@@ -119,13 +119,11 @@ dependencies {
   implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
   implementation(libs.androidx.work.runtime.ktx)
-  implementation(libs.vico.compose)
-  implementation(libs.vico.compose.m3)
-  implementation(libs.vico.core)
-  "ksp"(libs.moshi.kotlin.codegen)
+  // implementation(libs.vico.compose)
+  // implementation(libs.vico.compose.m3)
+  // implementation(libs.vico.core)
   implementation(libs.okhttp)
   implementation(libs.retrofit)
-  implementation(libs.converter.moshi)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

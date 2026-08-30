@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.filled.TrendingUp
@@ -42,10 +43,6 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.TextStyle
 import java.text.NumberFormat
 import java.util.Locale
-
-// Custom colors based on the image
-
-data class HoldingSummary(val name: String, val value: Double, val returnPct: Double)
 
 @Composable
 fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () -> Unit = {}) {
@@ -530,7 +527,8 @@ fun HeaderSection(viewModel: PortfolioViewModel) {
                 Column(horizontalAlignment = Alignment.End) {
                     androidx.compose.material3.TextButton(onClick = {
                         showBackupDialog = false
-                        exportLauncher.launch("pearlport_backup.json")
+                        val dateStr = java.text.SimpleDateFormat("dd_MM_yyyy", java.util.Locale.getDefault()).format(java.util.Date())
+                        exportLauncher.launch("Pp_backup_${dateStr}.json")
                     }) {
                         Text("Export Backup File")
                     }
@@ -602,69 +600,59 @@ fun HeaderSection(viewModel: PortfolioViewModel) {
     }
 
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        val bannerRes = R.drawable.app_banner
-        androidx.compose.foundation.Image(
-            painter = androidx.compose.ui.res.painterResource(id = bannerRes),
-            contentDescription = "Pearl Port Banner",
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            contentScale = androidx.compose.ui.layout.ContentScale.FillWidth,
-            alignment = Alignment.Center
-        )
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-                    val greeting = when (currentHour) {
-                        in 0..11 -> "Good morning,"
-                        in 12..17 -> "Good afternoon,"
-                        else -> "Good evening,"
-                    }
-                    Text(greeting, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("$currentUserName \uD83D\uDC4B", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                val greeting = when (currentHour) {
+                    in 0..11 -> "Good morning,"
+                    in 12..17 -> "Good afternoon,"
+                    else -> "Good evening,"
                 }
-                Box {
-                    IconButton(
-                        onClick = { menuExpanded = true },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Menu", modifier = Modifier.size(28.dp))
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Account") },
-                            onClick = { 
-                                nameInput = currentUserName
-                                menuExpanded = false 
-                                showAccountDialog = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Backup & Restore") },
-                            onClick = { 
-                                menuExpanded = false 
-                                showBackupDialog = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("About") },
-                            onClick = { 
-                                menuExpanded = false 
-                                showAboutDialog = true
-                            }
-                        )
-                    }
+                Text(greeting, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("$currentUserName \uD83D\uDC4B", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(Icons.Filled.Menu, contentDescription = "Menu", modifier = Modifier.size(28.dp))
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Account") },
+                        onClick = { 
+                            nameInput = currentUserName
+                            menuExpanded = false 
+                            showAccountDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Backup & Restore") },
+                        onClick = { 
+                            menuExpanded = false 
+                            showBackupDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("About") },
+                        onClick = { 
+                            menuExpanded = false 
+                            showAboutDialog = true
+                        }
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -748,7 +736,23 @@ fun PortfolioSummaryCard(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Invested", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AccountBalanceWallet,
+                                contentDescription = "Invested",
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Invested",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(formatter.format(invested).replace("LKR", "LKR "), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
@@ -770,48 +774,4 @@ fun SectionTitle(title: String, action: String = "") {
             Text(action, color = MaterialTheme.colorScheme.primaryContainer, style = MaterialTheme.typography.labelMedium)
         }
     }
-}
-
-@Composable
-fun MarketRow(title: String, val1: String, val2: String, val2Color: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(title, style = MaterialTheme.typography.labelMedium, color = Color.DarkGray)
-        Row {
-            if (val1.isNotEmpty()) {
-                Text(val1, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            Text(val2, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = val2Color)
-        }
-    }
-    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 0.5.dp)
-}
-
-@Composable
-fun HoldingRow(name: String, value: String, weight: String, change: String, isProfit: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-            Text(name.take(1), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primaryContainer)
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(value.replace("LKR", "LKR "), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(weight, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Box(modifier = Modifier.background(if (isProfit) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)) {
-                    Text(change, style = MaterialTheme.typography.labelSmall, color = if (isProfit) ProfitGreen else LossRed, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 0.5.dp)
 }

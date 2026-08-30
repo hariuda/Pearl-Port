@@ -14,7 +14,8 @@ data class FixedDeposit(
     val isMonthlyInterest: Boolean = false,
     val sector: String = "Fixed Deposits",
     val startDate: Long = System.currentTimeMillis(),
-    val periodMonths: Int = 12
+    val periodMonths: Int = 12,
+    val hasAitDeduction: Boolean = false
 ) {
     fun calculateAccruedInterest(): Double {
         val now = System.currentTimeMillis()
@@ -27,13 +28,20 @@ data class FixedDeposit(
         // Coerce the months passed so it doesn't exceed the period
         val monthsPassed = diffMonth.coerceIn(0, periodMonths)
         
-        if (isMonthlyInterest) {
-            return principalAmount * (interestRate / 100) * (monthsPassed / 12.0)
+        val grossInterest = if (isMonthlyInterest) {
+            principalAmount * (interestRate / 100) * (monthsPassed / 12.0)
         } else {
             if (monthsPassed >= periodMonths || now >= maturityDate) {
-                return principalAmount * (interestRate / 100) * (periodMonths / 12.0)
+                principalAmount * (interestRate / 100) * (periodMonths / 12.0)
+            } else {
+                0.0
             }
-            return 0.0
+        }
+
+        return if (hasAitDeduction) {
+            grossInterest * 0.90 // 10% tax deducted from monthly/accrued interest
+        } else {
+            grossInterest
         }
     }
     

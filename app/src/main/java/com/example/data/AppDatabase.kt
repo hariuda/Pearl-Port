@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         Crypto::class,
         OtherInvestment::class
     ], 
-    version = 7, 
+    version = 8, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -1,46 +1,41 @@
 package com.example
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.ExistingPeriodicWorkPolicy
-import java.util.concurrent.TimeUnit
-import com.example.network.StockUpdateWorker
 
-import android.content.Context
-import android.os.Bundle
-import androidx.activity.SystemBarStyle
 import android.graphics.Color
+import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -50,14 +45,19 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.network.StockUpdateWorker
 import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.PortfolioViewModel
+import kotlinx.coroutines.delay
+import java.util.concurrent.TimeUnit
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Dashboard : Screen("dashboard", "Home", Icons.Filled.Home)
     object Portfolio : Screen("portfolio", "Portfolio", Icons.Filled.ShowChart)
     object Reports : Screen("reports", "Reports", Icons.Filled.Description)
-    
 }
 
 val items = listOf(
@@ -66,10 +66,7 @@ val items = listOf(
     Screen.Reports
 )
 
-enum class ThemeMode { SYSTEM, LIGHT, DARK }
-
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -85,107 +82,105 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
         )
-        val prefs = getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
 
         setContent {
             val viewModel: PortfolioViewModel = viewModel()
+            var showLoadingScreen by remember { mutableStateOf(true) }
+
+            LaunchedEffect(Unit) {
+                delay(1500L)
+                showLoadingScreen = false
+            }
+
             MyApplicationTheme {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val navController = rememberNavController()
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
 
-                val navController = rememberNavController()
-                var showMenu by remember { mutableStateOf(false) }
-
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-
-                Scaffold(
-                    topBar = {
-                    if (currentDestination?.route != Screen.Dashboard.route) {
-                        TopAppBar(
-                            title = { Text("Pearl Port", fontWeight = FontWeight.SemiBold) },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.background,
-                                titleContentColor = MaterialTheme.colorScheme.onBackground,
-                                actionIconContentColor = MaterialTheme.colorScheme.onBackground
-                            ),
-                            actions = {
-                                if (currentDestination?.route == Screen.Dashboard.route) {
-                                    IconButton(onClick = { showMenu = true }) {
-                                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                                    }
-                                    DropdownMenu(
-                                        expanded = showMenu,
-                                        onDismissRequest = { showMenu = false }
-                                    ) {
-                                    androidx.compose.material3.Text("  Chart Colors", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(8.dp))
-                                    DropdownMenuItem(
-                                        text = { Text("Default") },
+                    Scaffold(
+                        bottomBar = {
+                            NavigationBar(
+                                modifier = Modifier.height(72.dp),
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 6.dp,
+                                windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 8.dp)
+                            ) {
+                                items.forEach { screen ->
+                                    val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                                    NavigationBarItem(
+                                        icon = { 
+                                            Icon(
+                                                screen.icon, 
+                                                contentDescription = screen.title,
+                                                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            ) 
+                                        },
+                                        label = { 
+                                            Text(
+                                                screen.title,
+                                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                            ) 
+                                        },
+                                        selected = selected,
+                                        colors = NavigationBarItemDefaults.colors(
+                                            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        ),
                                         onClick = {
-                                            viewModel.setChartColorPalette("Default")
-                                            showMenu = false
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Vibrant") },
-                                        onClick = {
-                                            viewModel.setChartColorPalette("Vibrant")
-                                            showMenu = false
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Ocean") },
-                                        onClick = {
-                                            viewModel.setChartColorPalette("Ocean")
-                                            showMenu = false
-                                        }
-                                    )
-                                }
-                                }
-                            }
-                        )
-                    }
-                    },
-                    bottomBar = {
-                        NavigationBar(
-                            modifier = Modifier.height(72.dp),
-                            windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp, 0.dp, 0.dp, 8.dp)
-                        ) {
-                            items.forEach { screen ->
-                                NavigationBarItem(
-                                    icon = { Icon(screen.icon, contentDescription = null) },
-                                    label = { Text(screen.title) },
-                                    selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                                    onClick = {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
+                                            navController.navigate(screen.route) {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = (screen.route != Screen.Dashboard.route)
                                             }
-                                            launchSingleTop = true
-                                            restoreState = (screen.route != Screen.Dashboard.route)
                                         }
-                                    }
-                                )
+                                    )
+                                }
+                            }
+                        }
+                    ) { innerPadding ->
+                        NavHost(
+                            navController = navController,
+                            startDestination = Screen.Dashboard.route,
+                            modifier = Modifier.padding(innerPadding)
+                        ) {
+                            composable(Screen.Dashboard.route) { 
+                                DashboardScreen(
+                                    viewModel = viewModel,
+                                    onNavigateToAllocation = { navController.navigate("allocation") }
+                                ) 
+                            }
+                            composable(Screen.Portfolio.route) { PortfolioScreen(viewModel) }
+                            composable(Screen.Reports.route) { ReportsScreen(viewModel) }
+                            composable("allocation") { 
+                                AllocationScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() }
+                                ) 
                             }
                         }
                     }
-                ) { innerPadding ->
-                    NavHost(
-                        navController = navController,
-                        startDestination = Screen.Dashboard.route,
-                        modifier = Modifier.padding(innerPadding)
+
+                    AnimatedVisibility(
+                        visible = showLoadingScreen,
+                        exit = fadeOut(animationSpec = tween(durationMillis = 400))
                     ) {
-                        composable(Screen.Dashboard.route) { 
-                            DashboardScreen(
-                                viewModel = viewModel,
-                                onNavigateToAllocation = { navController.navigate("allocation") }
-                            ) 
-                        }
-                        composable(Screen.Portfolio.route) { PortfolioScreen(viewModel) }
-                        composable(Screen.Reports.route) { ReportsScreen(viewModel) }
-                        composable("allocation") { 
-                            AllocationScreen(
-                                viewModel = viewModel,
-                                onNavigateBack = { navController.popBackStack() }
-                            ) 
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.loading_screen),
+                                contentDescription = "Loading Screen",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
                         }
                     }
                 }

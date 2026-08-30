@@ -39,6 +39,12 @@ object DatabaseProvider {
         }
     }
 
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("ALTER TABLE fixed_deposits ADD COLUMN hasAitDeduction INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Volatile
     private var INSTANCE: AppDatabase? = null
 
@@ -49,7 +55,7 @@ object DatabaseProvider {
                 AppDatabase::class.java,
                 "portfolio_database"
             )
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
             INSTANCE = instance

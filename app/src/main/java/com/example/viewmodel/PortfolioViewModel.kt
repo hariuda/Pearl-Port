@@ -1,7 +1,6 @@
 package com.example.viewmodel
 
 import android.app.Application
-import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.Crypto
@@ -18,11 +17,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class PortfolioViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: PortfolioRepository
@@ -193,40 +193,79 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
     }
     
     fun exportTaxReport(): String {
-        // Return CSV string content
+        return exportDetailedTaxReport()
+    }
+
+    fun exportDetailedTaxReport(): String {
         val currentPositions = positions.value
         val currentFds = fixedDeposits.value
         val currentUTs = unitTrusts.value
         val currentCrypto = crypto.value
         val currentOther = otherInvestments.value
+        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
         
         val sb = StringBuilder()
-        sb.append("Type,Asset,Quantity/Principal,Average Price/Interest,Current Value\n")
-        
+        sb.append("=================================================================================\n")
+        sb.append("PEARL PORT - PORTFOLIO TAX & VALUATION STATEMENT\n")
+        sb.append("Generated On: ${sdf.format(Date())}\n")
+        sb.append("=================================================================================\n\n")
+
+        sb.append("--- EQUITIES & STOCKS ---\n")
+        sb.append("Symbol,Company,Quantity,Avg Buy Price (LKR),Total Cost (LKR),Current Price (LKR),Current Value (LKR),Unrealized P&L (LKR),Gain %\n")
+        var totalStockCost = 0.0
+        var totalStockVal = 0.0
         currentPositions.forEach { p ->
             val cp = if (p.currentPrice > 0) p.currentPrice else p.averagePrice
-            val totalValue = cp * p.quantity
-            sb.append("Stock,${p.symbol},${p.quantity},${p.averagePrice},$totalValue\n")
+            val cost = p.averagePrice * p.quantity
+            val value = cp * p.quantity
+            val gain = value - cost
+            val gainPct = if (cost > 0) (gain / cost) * 100 else 0.0
+            totalStockCost += cost
+            totalStockVal += value
+            sb.append("\"${p.symbol}\",\"${p.companyName}\",${p.quantity},${String.format(Locale.US, "%.2f", p.averagePrice)},${String.format(Locale.US, "%.2f", cost)},${String.format(Locale.US, "%.2f", cp)},${String.format(Locale.US, "%.2f", value)},${String.format(Locale.US, "%.2f", gain)},${String.format(Locale.US, "%.2f", gainPct)}%\n")
         }
-        
+        sb.append("Subtotal Stocks Cost: LKR ${String.format(Locale.US, "%.2f", totalStockCost)}, Subtotal Stocks Value: LKR ${String.format(Locale.US, "%.2f", totalStockVal)}\n\n")
+
+        sb.append("--- FIXED DEPOSITS & AIT WITHHOLDING TAX ---\n")
+        sb.append("Bank/Institution,Principal (LKR),Interest Rate %,Payout Type,AIT 10% Deducted,Gross Interest (LKR),Tax Deducted (LKR),Net Accrued Interest (LKR),Total Value (LKR)\n")
+        var totalFdPrincipal = 0.0
+        var totalGrossInterest = 0.0
+        var totalTaxDeducted = 0.0
+        var totalFdVal = 0.0
         currentFds.forEach { fd ->
-            sb.append("Fixed Deposit,${fd.bankName},${fd.principalAmount},${fd.interestRate}%,${fd.principalAmount}\n")
+            val accrued = fd.calculateAccruedInterest()
+            val gross = if (fd.hasAitDeduction) accrued / 0.90 else accrued
+            val tax = if (fd.hasAitDeduction) gross * 0.10 else 0.0
+            totalFdPrincipal += fd.principalAmount
+            totalGrossInterest += gross
+            totalTaxDeducted += tax
+            totalFdVal += fd.currentValue
+            val payoutType = if (fd.isMonthlyInterest) "Monthly" else "At Maturity"
+            val aitStatus = if (fd.hasAitDeduction) "YES (10%)" else "NO"
+            sb.append("\"${fd.bankName}\",${String.format(Locale.US, "%.2f", fd.principalAmount)},${String.format(Locale.US, "%.2f", fd.interestRate)}%,\"$payoutType\",$aitStatus,${String.format(Locale.US, "%.2f", gross)},${String.format(Locale.US, "%.2f", tax)},${String.format(Locale.US, "%.2f", accrued)},${String.format(Locale.US, "%.2f", fd.currentValue)}\n")
         }
-        
+        sb.append("Subtotal FD Principal: LKR ${String.format(Locale.US, "%.2f", totalFdPrincipal)}, Total Tax Withheld: LKR ${String.format(Locale.US, "%.2f", totalTaxDeducted)}, Total FD Value: LKR ${String.format(Locale.US, "%.2f", totalFdVal)}\n\n")
+
+        sb.append("--- UNIT TRUSTS ---\n")
+        sb.append("Fund Name,Units,Avg NAV (LKR),Current NAV (LKR),Total Cost (LKR),Current Value (LKR),Unrealized Gain (LKR)\n")
         currentUTs.forEach { ut ->
-            val totalValue = ut.currentNav * ut.units
-            sb.append("Unit Trust,${ut.fundName},${ut.units},${ut.averageNav},$totalValue\n")
+            val cost = ut.averageNav * ut.units
+            val value = ut.currentNav * ut.units
+            sb.append("\"${ut.fundName}\",${ut.units},${String.format(Locale.US, "%.2f", ut.averageNav)},${String.format(Locale.US, "%.2f", ut.currentNav)},${String.format(Locale.US, "%.2f", cost)},${String.format(Locale.US, "%.2f", value)},${String.format(Locale.US, "%.2f", value - cost)}\n")
         }
-        
+        sb.append("\n")
+
+        sb.append("--- CRYPTOCURRENCY & OTHER ASSETS ---\n")
+        sb.append("Asset Type,Name/Symbol,Quantity,Avg Price / Value (LKR),Current Value (LKR)\n")
         currentCrypto.forEach { c ->
-            val totalValue = c.currentPrice * c.quantity
-            sb.append("Crypto,${c.symbol},${c.quantity},${c.averagePrice},$totalValue\n")
+            val cp = if (c.currentPrice > 0) c.currentPrice else c.averagePrice
+            sb.append("Crypto,\"${c.symbol}\",${c.quantity},${String.format(Locale.US, "%.2f", c.averagePrice)},${String.format(Locale.US, "%.2f", cp * c.quantity)}\n")
         }
-        
         currentOther.forEach { o ->
-            sb.append("Other (${o.type}),${o.name},N/A,N/A,${o.value}\n")
+            val valStr = if (o.quantity > 0) String.format(Locale.US, "%.2f", o.quantity * o.currentPrice) else String.format(Locale.US, "%.2f", o.value)
+            sb.append("\"Other (${o.type})\",\"${o.name}\",${o.quantity},${String.format(Locale.US, "%.2f", o.averagePrice)},$valStr\n")
         }
-        
+
         return sb.toString()
     }
 }
