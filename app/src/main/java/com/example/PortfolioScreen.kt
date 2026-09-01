@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -125,6 +126,8 @@ fun PortfolioScreen(viewModel: PortfolioViewModel) {
         }
     }
 
+    var isRefreshing by remember { mutableStateOf(false) }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
@@ -139,13 +142,22 @@ fun PortfolioScreen(viewModel: PortfolioViewModel) {
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(padding)
-                .statusBarsPadding()
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                isRefreshing = true
+                viewModel.refreshPrices {
+                    isRefreshing = false
+                }
+            },
+            modifier = Modifier.padding(padding)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding()
+            ) {
             // Header Bar
             Row(
                 modifier = Modifier
@@ -358,6 +370,7 @@ fun PortfolioScreen(viewModel: PortfolioViewModel) {
                     4 -> OtherTab(viewModel, tabColor, searchQuery, sortOrder, onEdit)
                 }
             }
+        }
         }
         
         if (showAddDialog) {
@@ -1553,12 +1566,12 @@ fun AssetClassSummaryHeader(
     val gainPercent = if (invested > 0) (totalGain / invested) * 100 else 0.0
     val isProfit = totalGain >= 0
 
-    val cardBgColor = Color(0xFFD3D3D3)
-    val textPrimaryColor = Color(0xFF1F2937)
-    val textSecondaryColor = Color(0xFF4B5563)
-    val dividerColor = Color(0xFFB5B5B5)
-    val profitColor = Color(0xFF15803D)
-    val lossColor = Color(0xFFDC2626)
+    val cardBgColor = MaterialTheme.colorScheme.primaryContainer
+    val textPrimaryColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val textSecondaryColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+    val dividerColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+    val profitColor = ProfitGreen
+    val lossColor = LossRed
 
     Card(
         modifier = Modifier
@@ -1596,7 +1609,7 @@ fun AssetClassSummaryHeader(
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f)
                 ) {
                     Text(
                         text = "$holdingCount ${if (holdingCount == 1) "Holding" else "Holdings"}",

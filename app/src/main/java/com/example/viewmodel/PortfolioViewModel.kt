@@ -136,6 +136,18 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun refreshPrices(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                repository.fetchLatestPrices()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                onComplete()
+            }
+        }
+    }
+
     fun addPosition(position: StockPosition) {
         viewModelScope.launch { repository.insertPosition(position) }
     }
