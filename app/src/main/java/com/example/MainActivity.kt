@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import android.view.HapticFeedbackConstants
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ShowChart
@@ -77,6 +79,28 @@ class MainActivity : ComponentActivity() {
             ExistingPeriodicWorkPolicy.KEEP,
             updateWorkRequest
         )
+
+        val now = java.util.Calendar.getInstance()
+        val target = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.FRIDAY)
+            set(java.util.Calendar.HOUR_OF_DAY, 23)
+            set(java.util.Calendar.MINUTE, 50)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        if (now.after(target)) {
+            target.add(java.util.Calendar.WEEK_OF_YEAR, 1)
+        }
+        val initialDelay = target.timeInMillis - now.timeInMillis
+
+        val backupWorkRequest = PeriodicWorkRequestBuilder<com.example.worker.BackupWorker>(7, TimeUnit.DAYS)
+            .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+            .build()
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "weekly_backup_work",
+            ExistingPeriodicWorkPolicy.UPDATE,
+            backupWorkRequest
+        )
         
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
@@ -97,6 +121,7 @@ class MainActivity : ComponentActivity() {
                     val navController = rememberNavController()
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
+                    val view = LocalView.current
 
                     Scaffold(
                         bottomBar = {
@@ -131,6 +156,7 @@ class MainActivity : ComponentActivity() {
                                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                         ),
                                         onClick = {
+                                            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                                             navController.navigate(screen.route) {
                                                 popUpTo(navController.graph.findStartDestination().id) {
                                                     saveState = true

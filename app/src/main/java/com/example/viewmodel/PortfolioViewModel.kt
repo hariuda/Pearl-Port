@@ -10,6 +10,7 @@ import com.example.data.OtherInvestment
 import com.example.data.PortfolioRepository
 import com.example.data.StockAlert
 import com.example.data.StockPosition
+import com.example.data.TradeRecord
 import com.example.data.UnitTrust
 import com.example.network.NetworkProvider
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,13 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
     val crypto: StateFlow<List<Crypto>>
     val otherInvestments: StateFlow<List<OtherInvestment>>
     val alerts: StateFlow<List<StockAlert>>
+    val tradeRecords: StateFlow<List<TradeRecord>>
+    
+    private val _aiInsights = MutableStateFlow<String?>(null)
+    val aiInsights: StateFlow<String?> = _aiInsights
+
+    private val _isFetchingInsights = MutableStateFlow(false)
+    val isFetchingInsights: StateFlow<Boolean> = _isFetchingInsights
     
 
     private val prefs = application.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
@@ -124,6 +132,9 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
         alerts = repository.allAlerts.stateIn(
             viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
         )
+        tradeRecords = repository.allTradeRecords.stateIn(
+            viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+        )
 
         // Removed auto-seeding of mock data when empty so EmptyPortfolioState can be shown
 
@@ -148,12 +159,58 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun generateAIInsights() {
+        if (_isFetchingInsights.value) return
+        _isFetchingInsights.value = true
+        
+        viewModelScope.launch {
+            try {
+                val dataStr = exportDetailedTaxReport()
+                val insights = com.example.network.GeminiService.generatePortfolioInsights(dataStr)
+                _aiInsights.value = insights
+            } catch (e: Exception) {
+                _aiInsights.value = "Failed to load insights: ${e.message}"
+            } finally {
+                _isFetchingInsights.value = false
+            }
+        }
+    }
+
+    fun clearAIInsights() {
+        _aiInsights.value = null
+    }
+
     fun addPosition(position: StockPosition) {
         viewModelScope.launch { repository.insertPosition(position) }
     }
 
     fun removePosition(id: Int) {
         viewModelScope.launch { repository.deletePosition(id) }
+    }
+
+    fun sellPosition(position: StockPosition, sellPrice: Double, sellQuantity: Int) {
+        viewModelScope.launch {
+            val tradeRecord = TradeRecord(
+                symbol = position.symbol,
+                companyName = position.companyName,
+                quantity = sellQuantity,
+                buyPrice = position.averagePrice,
+                sellPrice = sellPrice
+            )
+            repository.insertTradeRecord(tradeRecord)
+
+            if (sellQuantity >= position.quantity) {
+                repository.deletePosition(position.id)
+            } else {
+                repository.updatePosition(position.copy(quantity = position.quantity - sellQuantity))
+            }
+        }
+    }
+
+    fun logDividend(position: StockPosition, amount: Double) {
+        viewModelScope.launch {
+            repository.updatePosition(position.copy(totalDividends = position.totalDividends + amount))
+        }
     }
 
     suspend fun fetchCompanyProfile(symbol: String): com.example.network.CompanySummaryInfo? {
@@ -223,9 +280,10 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
         sb.append("=================================================================================\n\n")
 
         sb.append("--- EQUITIES & STOCKS ---\n")
-        sb.append("Symbol,Company,Quantity,Avg Buy Price (LKR),Total Cost (LKR),Current Price (LKR),Current Value (LKR),Unrealized P&L (LKR),Gain %\n")
+        sb.append("Symbol,Company,Quantity,Avg Buy Price (LKR),Total Cost (LKR),Current Price (LKR),Current Value (LKR),Unrealized P&L (LKR),Gain %,Dividends (LKR)\n")
         var totalStockCost = 0.0
         var totalStockVal = 0.0
+        var totalDividends = 0.0
         currentPositions.forEach { p ->
             val cp = if (p.currentPrice > 0) p.currentPrice else p.averagePrice
             val cost = p.averagePrice * p.quantity
@@ -234,9 +292,10 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
             val gainPct = if (cost > 0) (gain / cost) * 100 else 0.0
             totalStockCost += cost
             totalStockVal += value
-            sb.append("\"${p.symbol}\",\"${p.companyName}\",${p.quantity},${String.format(Locale.US, "%.2f", p.averagePrice)},${String.format(Locale.US, "%.2f", cost)},${String.format(Locale.US, "%.2f", cp)},${String.format(Locale.US, "%.2f", value)},${String.format(Locale.US, "%.2f", gain)},${String.format(Locale.US, "%.2f", gainPct)}%\n")
+            totalDividends += p.totalDividends
+            sb.append("\"${p.symbol}\",\"${p.companyName}\",${p.quantity},${String.format(Locale.US, "%.2f", p.averagePrice)},${String.format(Locale.US, "%.2f", cost)},${String.format(Locale.US, "%.2f", cp)},${String.format(Locale.US, "%.2f", value)},${String.format(Locale.US, "%.2f", gain)},${String.format(Locale.US, "%.2f", gainPct)}%,${String.format(Locale.US, "%.2f", p.totalDividends)}\n")
         }
-        sb.append("Subtotal Stocks Cost: LKR ${String.format(Locale.US, "%.2f", totalStockCost)}, Subtotal Stocks Value: LKR ${String.format(Locale.US, "%.2f", totalStockVal)}\n\n")
+        sb.append("Subtotal Stocks Cost: LKR ${String.format(Locale.US, "%.2f", totalStockCost)}, Subtotal Stocks Value: LKR ${String.format(Locale.US, "%.2f", totalStockVal)}, Total Dividends: LKR ${String.format(Locale.US, "%.2f", totalDividends)}\n\n")
 
         sb.append("--- FIXED DEPOSITS & AIT WITHHOLDING TAX ---\n")
         sb.append("Bank/Institution,Principal (LKR),Interest Rate %,Payout Type,AIT 10% Deducted,Gross Interest (LKR),Tax Deducted (LKR),Net Accrued Interest (LKR),Total Value (LKR)\n")
@@ -277,6 +336,26 @@ class PortfolioViewModel(application: Application) : AndroidViewModel(applicatio
             val valStr = if (o.quantity > 0) String.format(Locale.US, "%.2f", o.quantity * o.currentPrice) else String.format(Locale.US, "%.2f", o.value)
             sb.append("\"Other (${o.type})\",\"${o.name}\",${o.quantity},${String.format(Locale.US, "%.2f", o.averagePrice)},$valStr\n")
         }
+        sb.append("\n")
+
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        val trades = tradeRecords.value
+        val tradesThisYear = trades.filter {
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = it.tradeDate
+            cal.get(java.util.Calendar.YEAR) == currentYear
+        }
+
+        sb.append("--- TRADE HISTORY & REALIZED CAPITAL GAINS (FY $currentYear) ---\n")
+        sb.append("Date,Symbol,Company,Quantity,Avg Buy Price (LKR),Sell Price (LKR),Realized P&L (LKR)\n")
+        var totalRealizedGains = 0.0
+        tradesThisYear.forEach { t ->
+            val gain = (t.sellPrice - t.buyPrice) * t.quantity
+            totalRealizedGains += gain
+            val tradeDateStr = sdf.format(Date(t.tradeDate))
+            sb.append("$tradeDateStr,\"${t.symbol}\",\"${t.companyName}\",${t.quantity},${String.format(Locale.US, "%.2f", t.buyPrice)},${String.format(Locale.US, "%.2f", t.sellPrice)},${String.format(Locale.US, "%.2f", gain)}\n")
+        }
+        sb.append("Total Realized Capital Gains (FY $currentYear): LKR ${String.format(Locale.US, "%.2f", totalRealizedGains)}\n")
 
         return sb.toString()
     }

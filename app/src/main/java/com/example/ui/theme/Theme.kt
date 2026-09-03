@@ -30,12 +30,43 @@ object ChartColors {
         "Crypto Currency" to Color(0xFF03045E),
         "Gold & Other" to Color(0xFFCAF0F8)
     )
-    
+
+    val SectorDefault = listOf(
+        Color(0xFF4A3B8C), // PearlPurpleLight
+        Color(0xFF2E8B57), // SeaGreen
+        Color(0xFFD4AF37), // ChampagneGold
+        Color(0xFF3B82F6), // Blue
+        Color(0xFF8B5CF6), // Violet
+        Color(0xFFF59E0B), // Amber
+        Color(0xFF10B981), // ProfitGreen
+        Color(0xFFF43F5E), // Rose
+        Color(0xFF6366F1), // Indigo
+        Color(0xFF14B8A6)  // Teal
+    )
+
+    val SectorVibrant = listOf(
+        Color(0xFFE91E63), Color(0xFF9C27B0), Color(0xFF3F51B5), Color(0xFF00BCD4),
+        Color(0xFF4CAF50), Color(0xFFFFEB3B), Color(0xFFFF9800), Color(0xFF795548)
+    )
+
+    val SectorOcean = listOf(
+        Color(0xFF03045E), Color(0xFF0077B6), Color(0xFF00B4D8), Color(0xFF90E0EF),
+        Color(0xFFCAF0F8), Color(0xFF48CAE4), Color(0xFF0096C7), Color(0xFF023E8A)
+    )
+
     fun getPalette(name: String): Map<String, Color> {
         return when (name) {
             "Vibrant" -> Vibrant
             "Ocean" -> Ocean
             else -> Default
+        }
+    }
+
+    fun getSectorPalette(name: String): List<Color> {
+        return when (name) {
+            "Vibrant" -> SectorVibrant
+            "Ocean" -> SectorOcean
+            else -> SectorDefault
         }
     }
 }

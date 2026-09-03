@@ -23,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.dp
 import com.example.data.Crypto
 import com.example.data.FixedDeposit
@@ -52,6 +54,9 @@ fun AddInvestmentDialog(
     var periodStr by remember { mutableStateOf("12") }
     var isMonthlyInterest by remember { mutableStateOf(false) }
     var hasAitDeduction by remember { mutableStateOf(false) }
+    var isPrivateWallet by remember { mutableStateOf(false) }
+    var exchangeName by remember { mutableStateOf("") }
+    var interestWithdrawn by remember { mutableStateOf(false) }
 
     LaunchedEffect(itemToEdit) {
         if (itemToEdit != null) {
@@ -74,6 +79,7 @@ fun AddInvestmentDialog(
                     periodStr = itemToEdit.periodMonths.toString()
                     isMonthlyInterest = itemToEdit.isMonthlyInterest
                     hasAitDeduction = itemToEdit.hasAitDeduction
+                    interestWithdrawn = itemToEdit.interestWithdrawn
                 }
                 is UnitTrust -> {
                     name = itemToEdit.fundName
@@ -86,6 +92,8 @@ fun AddInvestmentDialog(
                     price = itemToEdit.averagePrice.toString()
                     val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     dateStr = format.format(Date(itemToEdit.purchaseDate))
+                    isPrivateWallet = itemToEdit.isPrivateWallet
+                    exchangeName = itemToEdit.exchangeName
                 }
                 is OtherInvestment -> {
                     name = itemToEdit.name
@@ -178,6 +186,20 @@ fun AddInvestmentDialog(
                                 onCheckedChange = { hasAitDeduction = it }
                             )
                         }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Interest Withdrawn", style = MaterialTheme.typography.bodyMedium)
+                                Text("Exclude accrued interest from total", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = interestWithdrawn,
+                                onCheckedChange = { interestWithdrawn = it }
+                            )
+                        }
                     }
                     2 -> {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Fund Name") }, modifier = Modifier.fillMaxWidth())
@@ -189,6 +211,20 @@ fun AddInvestmentDialog(
                         OutlinedTextField(value = quantity, onValueChange = { quantity = it.replace(",", "") }, visualTransformation = com.example.ui.components.NumberCommaVisualTransformation(), label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = price, onValueChange = { price = it.replace(",", "") }, visualTransformation = com.example.ui.components.NumberCommaVisualTransformation(), label = { Text("Rate (LKR)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = dateStr, onValueChange = { dateStr = it }, label = { Text("Purchase Date (yyyy-MM-dd)") }, modifier = Modifier.fillMaxWidth())
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Stored in Private Wallet?", style = MaterialTheme.typography.bodyMedium)
+                            Switch(
+                                checked = isPrivateWallet,
+                                onCheckedChange = { isPrivateWallet = it }
+                            )
+                        }
+                        if (!isPrivateWallet) {
+                            OutlinedTextField(value = exchangeName, onValueChange = { exchangeName = it }, label = { Text("Exchange (e.g. Binance)") }, modifier = Modifier.fillMaxWidth())
+                        }
                     }
                     4 -> {
                         OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name (e.g. Gold)") }, modifier = Modifier.fillMaxWidth())
@@ -239,7 +275,8 @@ fun AddInvestmentDialog(
                                         isMonthlyInterest = isMonthlyInterest,
                                         startDate = startDate,
                                         periodMonths = periodMonths,
-                                        hasAitDeduction = hasAitDeduction
+                                        hasAitDeduction = hasAitDeduction,
+                                        interestWithdrawn = interestWithdrawn
                                     )
                                 )
                             }
@@ -249,7 +286,7 @@ fun AddInvestmentDialog(
                             3 -> {
                                 val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                                 val date = format.parse(dateStr)?.time ?: System.currentTimeMillis()
-                                viewModel.addCrypto(Crypto(id = editId, symbol = symbol, quantity = quantity.toDoubleOrNull() ?: 0.0, averagePrice = price.toDoubleOrNull() ?: 0.0, currentPrice = (itemToEdit as? Crypto)?.currentPrice ?: (price.toDoubleOrNull() ?: 0.0), purchaseDate = date))
+                                viewModel.addCrypto(Crypto(id = editId, symbol = symbol, quantity = quantity.toDoubleOrNull() ?: 0.0, averagePrice = price.toDoubleOrNull() ?: 0.0, currentPrice = (itemToEdit as? Crypto)?.currentPrice ?: (price.toDoubleOrNull() ?: 0.0), purchaseDate = date, isPrivateWallet = isPrivateWallet, exchangeName = if (isPrivateWallet) "" else exchangeName))
                             }
                             4 -> {
                                 val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())

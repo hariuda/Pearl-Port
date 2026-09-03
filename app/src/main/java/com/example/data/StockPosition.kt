@@ -12,5 +12,6 @@ data class StockPosition(
     val averagePrice: Double,
     val sector: String, // e.g., "Banks"
     val currentPrice: Double = 0.0, // To be updated via our mock API or input
+    val totalDividends: Double = 0.0,
     val purchaseDate: Long = System.currentTimeMillis()
 )

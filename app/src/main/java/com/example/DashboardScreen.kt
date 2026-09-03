@@ -407,7 +407,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
                     val value = currentPrice * p.quantity
                     equitiesSectorMap[p.sector] = (equitiesSectorMap[p.sector] ?: 0.0) + value
                 }
-                AllocationSection(data = equitiesSectorMap, total = totalStocksValue, palette = palette)
+                AllocationSection(data = equitiesSectorMap, total = totalStocksValue, palette = palette, fallbackColors = com.example.ui.theme.ChartColors.getSectorPalette(chartPaletteName))
             }
         }
 
@@ -416,7 +416,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
             fds.forEach { fdMap[it.bankName] = (fdMap[it.bankName] ?: 0.0) + it.currentValue }
             item {
                 SectionTitle("Fixed Deposits by Institution", "")
-                AllocationSection(data = fdMap, total = totalFdValue, palette = palette)
+                AllocationSection(data = fdMap, total = totalFdValue, palette = palette, fallbackColors = com.example.ui.theme.ChartColors.getSectorPalette(chartPaletteName))
             }
         }
 
@@ -428,7 +428,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
             }
             item {
                 SectionTitle("Unit Trusts by Fund", "")
-                AllocationSection(data = utMap, total = totalUTValue, palette = palette)
+                AllocationSection(data = utMap, total = totalUTValue, palette = palette, fallbackColors = com.example.ui.theme.ChartColors.getSectorPalette(chartPaletteName))
             }
         }
 
@@ -441,7 +441,7 @@ fun DashboardScreen(viewModel: PortfolioViewModel, onNavigateToAllocation: () ->
             }
             item {
                 SectionTitle("Crypto by Asset", "")
-                AllocationSection(data = cryptoMap, total = totalCryptoValue, palette = palette)
+                AllocationSection(data = cryptoMap, total = totalCryptoValue, palette = palette, fallbackColors = com.example.ui.theme.ChartColors.getSectorPalette(chartPaletteName))
             }
         }
 

@@ -45,6 +45,26 @@ object DatabaseProvider {
         }
     }
 
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `trade_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `symbol` TEXT NOT NULL, `companyName` TEXT NOT NULL, `quantity` INTEGER NOT NULL, `buyPrice` REAL NOT NULL, `sellPrice` REAL NOT NULL, `tradeDate` INTEGER NOT NULL)")
+        }
+    }
+
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("ALTER TABLE stock_positions ADD COLUMN totalDividends REAL NOT NULL DEFAULT 0.0")
+        }
+    }
+
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            database.execSQL("ALTER TABLE crypto ADD COLUMN isPrivateWallet INTEGER NOT NULL DEFAULT 0")
+            database.execSQL("ALTER TABLE crypto ADD COLUMN exchangeName TEXT NOT NULL DEFAULT ''")
+            database.execSQL("ALTER TABLE fixed_deposits ADD COLUMN interestWithdrawn INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
     @Volatile
     private var INSTANCE: AppDatabase? = null
 
@@ -55,7 +75,7 @@ object DatabaseProvider {
                 AppDatabase::class.java,
                 "portfolio_database"
             )
-            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
             INSTANCE = instance

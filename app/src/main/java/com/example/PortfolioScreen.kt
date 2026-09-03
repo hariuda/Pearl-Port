@@ -1,4 +1,7 @@
 package com.example
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -181,6 +184,27 @@ fun PortfolioScreen(viewModel: PortfolioViewModel) {
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    var showAI by remember { mutableStateOf(false) }
+                    IconButton(
+                        onClick = { showAI = true },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = "AI Insights",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    if (showAI) {
+                        AIInsightsDialog(viewModel, onDismiss = { showAI = false })
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
                         onClick = { isSearchActive = !isSearchActive },
                         modifier = Modifier
@@ -477,7 +501,9 @@ fun EquitiesTab(
                     lots = lots,
                     tabColor = tabColor,
                     onEdit = onEdit,
-                    onDelete = { viewModel.removePosition(it) }
+                    onDelete = { viewModel.removePosition(it) },
+                    onSell = { pos, price, qty -> viewModel.sellPosition(pos, price, qty) },
+                    onDividend = { pos, amount -> viewModel.logDividend(pos, amount) }
                 )
             }
         }
@@ -491,11 +517,101 @@ fun GroupedPortfolioCard(
     lots: List<StockPosition>,
     tabColor: Color,
     onEdit: (StockPosition) -> Unit,
-    onDelete: (Int) -> Unit
+    onDelete: (Int) -> Unit,
+    onSell: ((StockPosition, Double, Int) -> Unit)? = null,
+    onDividend: ((StockPosition, Double) -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     var lotToDelete by remember { mutableStateOf<Int?>(null) }
-    
+    var lotToSell by remember { mutableStateOf<StockPosition?>(null) }
+    var lotToDividend by remember { mutableStateOf<StockPosition?>(null) }
+
+    if (lotToDividend != null) {
+        var dividendAmountStr by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { lotToDividend = null },
+            title = { Text("Log Dividend", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Enter the total dividend amount received for this lot of ${lotToDividend!!.symbol}.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = dividendAmountStr,
+                        onValueChange = { dividendAmountStr = it },
+                        label = { Text("Dividend Amount (LKR)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val amount = dividendAmountStr.toDoubleOrNull() ?: 0.0
+                        if (amount > 0) {
+                            onDividend?.invoke(lotToDividend!!, amount)
+                            lotToDividend = null
+                        }
+                    }
+                ) {
+                    Text("Save", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { lotToDividend = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (lotToSell != null) {
+        var sellPriceStr by remember { mutableStateOf("") }
+        var sellQuantityStr by remember { mutableStateOf(lotToSell!!.quantity.toString()) }
+
+        AlertDialog(
+            onDismissRequest = { lotToSell = null },
+            title = { Text("Log Sale", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("Enter the sale details for ${lotToSell!!.symbol}. This will calculate capital gains.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = sellQuantityStr,
+                        onValueChange = { sellQuantityStr = it },
+                        label = { Text("Quantity Sold") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = sellPriceStr,
+                        onValueChange = { sellPriceStr = it },
+                        label = { Text("Sell Price (LKR)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val price = sellPriceStr.toDoubleOrNull() ?: 0.0
+                        val qty = sellQuantityStr.toIntOrNull() ?: 0
+                        if (price > 0 && qty > 0) {
+                            onSell?.invoke(lotToSell!!, price, qty)
+                            lotToSell = null
+                        }
+                    }
+                ) {
+                    Text("Record Sale", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { lotToSell = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     if (lotToDelete != null) {
         AlertDialog(
             onDismissRequest = { lotToDelete = null },
@@ -738,8 +854,39 @@ fun GroupedPortfolioCard(
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                if (lot.totalDividends > 0) {
+                                    Text(
+                                        "Dividends: ${currencyFormatter.format(lot.totalDividends).replace("LKR", "LKR ")}",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                        color = ProfitGreen
+                                    )
+                                }
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = { lotToDividend = lot },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.AccountBalanceWallet,
+                                        contentDescription = "Log Dividend",
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                IconButton(
+                                    onClick = { lotToSell = lot },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.AttachMoney,
+                                        contentDescription = "Sell",
+                                        tint = ProfitGreen,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
                                 IconButton(
                                     onClick = { onEdit(lot) },
                                     modifier = Modifier.size(28.dp)
@@ -1258,7 +1405,7 @@ fun CryptoTab(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = "Crypto Asset",
+                                        text = if (c.isPrivateWallet) "Private Wallet" else if (c.exchangeName.isNotBlank()) "Exchange: ${c.exchangeName}" else "Crypto Asset",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1741,3 +1888,49 @@ fun AssetClassSummaryHeader(
 
 
 
+
+@Composable
+fun AIInsightsDialog(viewModel: com.example.viewmodel.PortfolioViewModel, onDismiss: () -> Unit) {
+    val aiInsights by viewModel.aiInsights.collectAsStateWithLifecycle()
+    val isFetchingInsights by viewModel.isFetchingInsights.collectAsStateWithLifecycle()
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (aiInsights == null && !isFetchingInsights) {
+            viewModel.generateAIInsights()
+        }
+    }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("AI Portfolio Insights", fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            if (isFetchingInsights) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Analyzing portfolio with Gemini...", style = MaterialTheme.typography.bodyMedium)
+                }
+            } else if (aiInsights != null) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(aiInsights ?: "", style = MaterialTheme.typography.bodyMedium)
+                }
+            } else {
+                Text("Could not generate insights.", style = MaterialTheme.typography.bodyMedium)
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Close", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}

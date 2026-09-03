@@ -87,6 +87,16 @@ interface PortfolioDao {
     @Query("DELETE FROM other_investments WHERE id = :id")
     suspend fun deleteOtherInvestmentById(id: Int)
 
+    // Trade History
+    @Query("SELECT * FROM trade_history ORDER BY tradeDate DESC")
+    fun getAllTradeRecords(): Flow<List<TradeRecord>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTradeRecord(trade: TradeRecord)
+
+    @Query("DELETE FROM trade_history")
+    suspend fun deleteAllTradeRecords()
+
     @Query("DELETE FROM stock_positions")
     suspend fun deleteAllPositions()
 

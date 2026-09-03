@@ -49,13 +49,25 @@ fun ReportsScreen(viewModel: PortfolioViewModel) {
     val unitTrusts by viewModel.unitTrusts.collectAsStateWithLifecycle()
     val crypto by viewModel.crypto.collectAsStateWithLifecycle()
     val otherInvestments by viewModel.otherInvestments.collectAsStateWithLifecycle()
+    val tradeRecords by viewModel.tradeRecords.collectAsStateWithLifecycle()
 
     val currencyFormatter = remember { NumberFormat.getCurrencyInstance(Locale("en", "LK")) }
 
     // Computations
+    val currentYear = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR) }
+    val tradesThisYear = remember(tradeRecords) {
+        tradeRecords.filter {
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = it.tradeDate
+            cal.get(java.util.Calendar.YEAR) == currentYear
+        }
+    }
+    val totalRealizedGains = tradesThisYear.sumOf { (it.sellPrice - it.buyPrice) * it.quantity }
+    
     val totalStockVal = positions.sumOf { (if (it.currentPrice > 0) it.currentPrice else it.averagePrice) * it.quantity }
     val totalStockCost = positions.sumOf { it.averagePrice * it.quantity }
     val stockGain = totalStockVal - totalStockCost
+    val totalDividends = positions.sumOf { it.totalDividends }
 
     val totalFdPrincipal = fds.sumOf { it.principalAmount }
     val totalFdVal = fds.sumOf { it.currentValue }
@@ -178,6 +190,23 @@ fun ReportsScreen(viewModel: PortfolioViewModel) {
             }
         }
 
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                MetricSummaryCard(
+                    title = "Dividend Income",
+                    value = currencyFormatter.format(totalDividends).replace("LKR", "LKR "),
+                    subtitle = "From ${positions.count { it.totalDividends > 0 }} equities",
+                    subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    icon = Icons.Outlined.AccountBalanceWallet,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+
         // AIT / Withholding Tax Breakdown Card
         item {
             GradientOutlinedCard(
@@ -242,6 +271,69 @@ fun ReportsScreen(viewModel: PortfolioViewModel) {
                         amount = currencyFormatter.format(totalNetInterest).replace("LKR", "LKR "),
                         isBold = true,
                         valueColor = ProfitGreen
+                    )
+                }
+            }
+        }
+
+        // Realized Capital Gains Card
+        item {
+            GradientOutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.AttachMoney,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Realized Capital Gains",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Realized gains from trading activities for the current fiscal year (FY $currentYear).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    TaxRowItem(
+                        label = "Total Trades (FY $currentYear)",
+                        amount = tradesThisYear.size.toString()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TaxRowItem(
+                        label = "Net Realized Gains",
+                        amount = currencyFormatter.format(totalRealizedGains).replace("LKR", "LKR "),
+                        isBold = true,
+                        valueColor = if (totalRealizedGains >= 0) ProfitGreen else LossRed
                     )
                 }
             }

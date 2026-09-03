@@ -11,5 +11,7 @@ data class Crypto(
     val averagePrice: Double,
     val currentPrice: Double = 0.0,
     val purchaseDate: Long = System.currentTimeMillis(),
+    val isPrivateWallet: Boolean = false,
+    val exchangeName: String = "",
     val sector: String = "Crypto"
 )

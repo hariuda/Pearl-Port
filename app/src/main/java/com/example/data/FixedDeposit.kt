@@ -15,9 +15,12 @@ data class FixedDeposit(
     val sector: String = "Fixed Deposits",
     val startDate: Long = System.currentTimeMillis(),
     val periodMonths: Int = 12,
-    val hasAitDeduction: Boolean = false
+    val hasAitDeduction: Boolean = false,
+    val interestWithdrawn: Boolean = false
 ) {
     fun calculateAccruedInterest(): Double {
+        if (interestWithdrawn) return 0.0
+
         val now = System.currentTimeMillis()
         val calendarStart = Calendar.getInstance().apply { timeInMillis = startDate }
         val calendarNow = Calendar.getInstance().apply { timeInMillis = now }

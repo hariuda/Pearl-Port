@@ -10,9 +10,10 @@ import androidx.room.RoomDatabase
         StockAlert::class,
         UnitTrust::class,
         Crypto::class,
-        OtherInvestment::class
+        OtherInvestment::class,
+        TradeRecord::class
     ], 
-    version = 8, 
+    version = 11, 
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

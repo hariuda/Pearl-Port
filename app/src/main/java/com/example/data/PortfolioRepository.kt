@@ -11,10 +11,13 @@ class PortfolioRepository(private val portfolioDao: PortfolioDao) {
     val allUnitTrusts: Flow<List<UnitTrust>> = portfolioDao.getAllUnitTrusts()
     val allCrypto: Flow<List<Crypto>> = portfolioDao.getAllCrypto()
     val allOtherInvestments: Flow<List<OtherInvestment>> = portfolioDao.getAllOtherInvestments()
+    val allTradeRecords: Flow<List<TradeRecord>> = portfolioDao.getAllTradeRecords()
 
     suspend fun insertPosition(position: StockPosition) = portfolioDao.insertPosition(position)
     suspend fun updatePosition(position: StockPosition) = portfolioDao.updatePosition(position)
     suspend fun deletePosition(id: Int) = portfolioDao.deletePositionById(id)
+
+    suspend fun insertTradeRecord(trade: TradeRecord) = portfolioDao.insertTradeRecord(trade)
 
     suspend fun insertFixedDeposit(fd: FixedDeposit) = portfolioDao.insertFixedDeposit(fd)
     suspend fun deleteFixedDeposit(id: Int) = portfolioDao.deleteFixedDepositById(id)

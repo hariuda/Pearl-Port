@@ -159,7 +159,7 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
             if (totalStocksValue > 0) {
                 item {
                     SectionTitle("Equities by Sector", "")
-                    AllocationSection(data = sectorMap, total = totalStocksValue, palette = palette, currencyFormatter = currencyFormatter)
+                    AllocationSection(data = sectorMap, total = totalStocksValue, palette = palette, currencyFormatter = currencyFormatter, fallbackColors = com.example.ui.theme.ChartColors.getSectorPalette(chartPaletteName))
                 }
             }
 
@@ -169,7 +169,7 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
                 fds.forEach { fdMap[it.bankName] = (fdMap[it.bankName] ?: 0.0) + it.currentValue }
                 item {
                     SectionTitle("Fixed Deposits by Institution", "")
-                    AllocationSection(data = fdMap, total = totalFdValue, palette = palette, currencyFormatter = currencyFormatter)
+                    AllocationSection(data = fdMap, total = totalFdValue, palette = palette, currencyFormatter = currencyFormatter, fallbackColors = com.example.ui.theme.ChartColors.getSectorPalette(chartPaletteName))
                 }
             }
 
@@ -182,7 +182,7 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
                 }
                 item {
                     SectionTitle("Unit Trusts by Fund", "")
-                    AllocationSection(data = utMap, total = totalUTValue, palette = palette, currencyFormatter = currencyFormatter)
+                    AllocationSection(data = utMap, total = totalUTValue, palette = palette, currencyFormatter = currencyFormatter, fallbackColors = com.example.ui.theme.ChartColors.getSectorPalette(chartPaletteName))
                 }
             }
 
@@ -196,7 +196,7 @@ fun AllocationScreen(viewModel: PortfolioViewModel, onNavigateBack: () -> Unit) 
                 }
                 item {
                     SectionTitle("Crypto by Asset", "")
-                    AllocationSection(data = cryptoMap, total = totalCryptoValue, palette = palette, currencyFormatter = currencyFormatter)
+                    AllocationSection(data = cryptoMap, total = totalCryptoValue, palette = palette, currencyFormatter = currencyFormatter, fallbackColors = com.example.ui.theme.ChartColors.getSectorPalette(chartPaletteName))
                 }
             }
 
@@ -212,7 +212,8 @@ fun AllocationSection(
     data: Map<String, Double>,
     total: Double,
     palette: Map<String, Color>,
-    currencyFormatter: NumberFormat = remember { NumberFormat.getCurrencyInstance(Locale("en", "LK")) }
+    currencyFormatter: NumberFormat = remember { NumberFormat.getCurrencyInstance(Locale("en", "LK")) },
+    fallbackColors: List<Color> = palette.values.toList()
 ) {
     GradientOutlinedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -221,12 +222,11 @@ fun AllocationSection(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             val sortedData = data.entries.sortedByDescending { it.value }
-            val paletteValues = palette.values.toList()
             val fallbackColor = MaterialTheme.colorScheme.primaryContainer
             
             sortedData.forEachIndexed { index, entry ->
                 val percentage = if (total > 0) (entry.value / total) * 100 else 0.0
-                val color = palette[entry.key] ?: (if (paletteValues.isNotEmpty()) paletteValues[index % paletteValues.size] else fallbackColor)
+                val color = palette[entry.key] ?: (if (fallbackColors.isNotEmpty()) fallbackColors[index % fallbackColors.size] else fallbackColor)
                 
                 Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                     Row(
